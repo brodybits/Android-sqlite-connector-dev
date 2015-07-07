@@ -135,6 +135,13 @@ public class SQLiteConnectorTest extends Activity
       return;
     }
 
+    try {
+      mydbc.keyNativeString("test-password");
+    } catch (SQLException ex) {
+      logUnexpectedException("DB key exception", ex);
+      return;
+    }
+
     SQLiteStatement mystatement;
 
     try {
@@ -282,14 +289,41 @@ public class SQLiteConnectorTest extends Activity
 
     mystatement.dispose();
 
+    //checkIntegerResult("TEST error count", errorCount, 0);
+
     mydbc.dispose();
 
-    // try to reopen database:
+    // try to reopen and read database with no password key (should fail!):
+    try {
+      mydbc = null;
+      mystatement = null;
+
+      mydbc = myconnector.newSQLiteConnection(dbfile.getAbsolutePath(),
+        SQLiteOpenFlags.READWRITE | SQLiteOpenFlags.CREATE);
+
+      mystatement = mydbc.prepareStatement("SELECT * FROM mytable;");
+      mystatement.step();
+
+      // SHOULD NOT GET HERE:
+      logError("ERROR: Open & read encrypted database with no password key succeeded");
+      // clean up the mess:
+      mystatement.dispose();
+      mydbc.dispose();
+    } catch (SQLException ex) {
+      logResult("Attempt to open & read encrypted database with no password key failed - OK");
+
+      // clean up the mess if necessary:
+      if (mydbc != null) mydbc.dispose();
+      if (mystatement != null) mystatement.dispose();
+    }
+
+    // try to reopen database with password key:
     try {
       mydbc = myconnector.newSQLiteConnection(dbfile.getAbsolutePath(),
         SQLiteOpenFlags.READWRITE | SQLiteOpenFlags.CREATE);
+      mydbc.keyNativeString("test-password");
     } catch (SQLException ex) {
-      logUnexpectedException("DB open exception", ex);
+      logUnexpectedException("DB open or key exception", ex);
       return;
     }
 
